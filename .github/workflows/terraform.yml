@@ -1,0 +1,112 @@
+name: Terraform Azure Infra Deployment pipeline
+
+on:
+  push:
+    branches: ["main"]
+
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+jobs:
+  # lint-and-scan:
+  #   name: 'Lint and Security Scan'
+  #   runs-on: ubuntu-latest
+    # steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+
+    #   - name: Setup Terraform
+    #     uses: hashicorp/setup-terraform@v3
+
+    #   - name: Terraform Format Check
+    #     run: terraform fmt -check -recursive
+
+    #   - name: Setup TFLint
+    #     uses: terraform-linters/setup-tflint@v4
+    #     with:
+    #       tflint_version: latest
+
+        #  - name: Run TFLint
+        #    run: |
+        #      tflint --init
+        #      tflint -f compact
+
+        #  - name: Run tfsec
+        #    uses: aquasecurity/tfsec-action@v1.0.0
+        #    with:
+        #   working_directory: ${{ env.TF_WORKING_DIR }}
+
+        #  - name: Run Checkov
+        #    uses: bridgecrewio/checkov-action@master
+        #    with:
+        #      directory: .
+        #      framework: terraform
+        #      soft_fail: true
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./environments/dev
+
+    steps:
+
+      # 1. Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Azure Login
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          
+      # 3. Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # 4. Terraform Init
+      - name: Terraform Init
+        run: terraform init
+        env:
+          TF_VAR_vm_password: ${{ secrets.TF_VAR_VM_PASSWORD }}
+
+      # 6. Terraform Validate
+      - name: Terraform Validate
+        run: terraform validate
+
+      # 7. Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+        env:
+          TF_LOG: INFO  
+          TF_VAR_vm_password: ${{ secrets.TF_VAR_VM_PASSWORD }}
+      
+      # 8. Terraform apply
+      # - name: Terraform Apply
+      #   run: terraform apply -input=false -auto-approve tfplan
+      #   env:
+      #     TF_LOG: INFO  
+      #     TF_VAR_vm_password: ${{ secrets.TF_VAR_VM_PASSWORD }}
+      
+      #   # 9. Terraform Destroy Plan
+      # - name: Terraform Destroy Plan
+      #   run: terraform plan -destroy -input=false -out=tfplan-destroy
+      #   env:
+      #     TF_LOG: INFO
+      #     TF_VAR_vm_password: ${{ secrets.TF_VAR_VM_PASSWORD }}
+ 
+      #   # 10. Terraform Destroy
+      # - name: Terraform Destroy
+      #   run: terraform apply -input=false -auto-approve tfplan-destroy
+      #   env:
+      #     TF_LOG: INFO 
+      #     TF_VAR_vm_password: ${{ secrets.TF_VAR_VM_PASSWORD }} 
+       
+
